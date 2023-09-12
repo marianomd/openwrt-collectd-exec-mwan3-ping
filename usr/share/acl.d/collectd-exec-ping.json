@@ -1,0 +1,8 @@
+{
+    "user": "busybox",
+    "access": {
+            "network.interface": {
+                    "methods" : [ "dump" ]
+            }
+    }
+}
