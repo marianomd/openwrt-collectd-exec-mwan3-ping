@@ -35,12 +35,13 @@ WAN2_IF="wanb";
 declare targets=(
     "8.8.8.8"
 )
-ping_count="3";
+
+ping_count="12";
 
 ###############################################################################
-
-calc() { 
-    awk "BEGIN{ printf \"%.2f\n\", $* }"; 
+# for floating point calculations
+calc() {
+    awk "BEGIN{ printf \"%.2f\n\", $* }";
 }
 
 # Pure-bash alternative to sleep.
@@ -102,19 +103,22 @@ check_target() {
     sudo mwan3 use "${iface}" ping "${target}" -q -c "${ping_count}" >"${tmpfile}";
 
     # readarray -t result < <(curl -sS --user-agent "${user_agent}" -o /dev/null --max-time 5 -w "%{http_code}\n%{time_total}\n" "${url}"; echo "${PIPESTATUS[*]}");
-    mapfile -s "$((4))" -t file_data <"${tmpfile}"
+    mapfile -s "$((4))" -t file_data <"${tmpfile}";
 
 # 3 packets transmitted, 3 packets received, 0% packet loss
 # round-trip min/avg/max = 6.049/6.132/6.207 ms
 
     read -r _ _ _ _ _ _ loss _ _ < <(echo "${file_data[0]}");
     loss=$(calc "${loss/\%}"/100);
-    
+
     read -r _ _ _ _ _ min avg max _ < <(echo "${file_data[1]//\// }");
 
-    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping_droprate-${target}-${iface}\" interval=${COLLECTD_INTERVAL} N:${loss}";
-    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping-${target}-${iface}\" interval=${COLLECTD_INTERVAL} N:${avg}";
-    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping_stddev-${target}\" interval=${COLLECTD_INTERVAL} N:0.0";
+#logger "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping_droprate-${target}-${iface}\" N:${loss}";
+#logger "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping-${target}-${iface}\" N:${avg}";
+
+    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping_droprate-${target}-${iface}\" N:${loss}";
+    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping-${target}-${iface}\" N:${avg}";
+    echo "PUTVAL \"${COLLECTD_HOSTNAME}/ping-exec/ping_stddev-${target}-${iface}\" N:0.0";
 
     rm "${tmpfile}";
 }
@@ -125,6 +129,6 @@ while :; do
         check_target "${target}" "${WAN1_IF}"
         check_target "${target}" "${WAN2_IF}"
     done
-
-    snore "${COLLECTD_INTERVAL}";
+    snore 1;
+#    snore "${COLLECTD_INTERVAL}";
 done
